@@ -1,9 +1,9 @@
-<center>
-	<h3><img src="./banner.png" height="100px" width="400px"></h3>
-	<p>cli sys-info tool written in rust 🚀</p>
+<h3 align="center"><img src="./banner.png" height="100px" width="400px"></h3>
+<p align="center">cli sys-info tool written in rust 🚀</p>
 
+<p align="center">
 	<a href="./LICENSE"><img src="https://img.shields.io/badge/license-GPL%20v3.0-blue.svg"></a>
-</center>
+</p>
 
 <img src="./rfetch.png" width="45%" align="right" margin="10px">
 
