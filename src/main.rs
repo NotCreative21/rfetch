@@ -50,7 +50,7 @@ fn print_logo(sys: System, uptime: String, actual_wm: &str, cpu: String, swap: S
 {}      Q9kwojju]t]O                    {}Host:\t{}
 {}    e}}X#########Nh(le                 {}Distro:\t{}
 {}  etg######NZ]2q####Oi\\q              {}Kernel:\t{}
-{} ce#######N,     ?8###Nu;]            {}Uptime:\t{}
+{} ce#######N,     ?8###Nu;]            {}{}
 {} :SN######N:,     v######o_t          {}Shell:\t{}
 {} #s;^]O#####Otlvv6########Nr,Q        {}WM:\t{}
 {}   Q8u=;;cN################{{ o        {}CPU:\t{}
@@ -98,9 +98,18 @@ fn main() {
         uptime = format!("Uptime:\t{} hrs", sys.uptime() / 3600);
     }
 
-    // use epic magic with xprop to find the wm, might not work for everyone
+    // use xprop to find the wm
+    let win_command = Command::new("xprop")
+        .args(["-root", "-notype"])
+        .output()
+        .expect("could not find wm");
+
+    let win_command = str::from_utf8(&win_command.stdout).unwrap();
+
+    let win_id = &win_command[(win_command.find("_NET_SUPPORTING_WM_CHECK: window id #").unwrap() + 38)..(win_command.find("_XROOTPMAP_ID:").unwrap() - 1)];
+
     let wm = Command::new("xprop")
-        .args(["-id", "0x40001c"])
+        .args(["-id", &win_id])
         .output()
         .expect("could not find wm");
 
