@@ -1,20 +1,18 @@
 use std::{
-    fs::read_to_string, 
-    process::Command, 
-    str
+    fs::{self, read_to_string},
+    process::Command,
+    str,
 };
-use sysinfo::{
-    ComponentExt, 
-    ProcessorExt, 
-    System, 
-    SystemExt
-};
+use sysinfo::{ComponentExt, ProcessorExt, System, SystemExt};
 
 /*
  * returns the current shell used by the user by parsing /etc/passwd
  */
 fn get_shell() -> String {
-    let passwd: String = read_to_string("/etc/passwd").expect("could not determine shell");
+    let passwd: String = match read_to_string("/etc/passwd") {
+        Ok(v) => v,
+        Err(_) => " ".to_string(),
+    };
 
     let shell: &str = &passwd[22..passwd.find("\n").unwrap()];
 
@@ -28,7 +26,7 @@ fn get_shell() -> String {
  * to both free/avaible memory
  */
 fn make_pretty(i: u64) -> u32 {
-    (i as f32 / 1045.0).round() as u32
+    (i as f32 / 1073.7).round() as u32
 }
 
 /*
@@ -44,43 +42,50 @@ fn print_logo(sys: System, uptime: String, actual_wm: &str, cpu: String, swap: S
     // text color, also using bash color codes
     let tcolor = "\x1b[0;32m".to_string();
 
-    // print out the logo, this is very janky but it's a simple way to do it
-    let all = format!(
-        "\x1b[0;36m
-{}      Q9kwojju]t]O                    {}Host:\t{}
-{}    e}}X#########Nh(le                 {}Distro:\t{}
-{}  etg######NZ]2q####Oi\\q              {}Kernel:\t{}
-{} ce#######N,     ?8###Nu;]            {}{}
-{} :SN######N:,     v######o_t          {}Shell:\t{}
-{} #s;^]O#####Otlvv6########Nr,Q        {}WM:\t{}
-{}   Q8u=;;cN################{{ o        {}CPU:\t{}
-{}      Q]\\a###############w:`jQ        {}temp:\t{:?}°C
-{}    Q]lO##############Nf,`/gQ         {}RAM:\t{}MiB / {}MiB
-{}  #i{{g##############9?`,}}NQ           {}{}
-{} //N#############Ki,'\\qQ
-{}f_###########ge|',\\kBQ
-{}$`zg####gqu|:,ruRQQ
-{} O>,~:::;=zwgBQQ
-{}  QQQ##BQQQ
-             ",
-        lcolor, tcolor, sys.host_name().unwrap(),
-        lcolor, tcolor, sys.name().unwrap(),
-        lcolor, tcolor, sys.kernel_version().unwrap(),
-        lcolor, tcolor, uptime,
-        lcolor, tcolor, get_shell(),
-        lcolor, tcolor, actual_wm,
-        lcolor, tcolor, cpu,
-        lcolor, tcolor, sys.components()[0].temperature(),
-        lcolor, tcolor, make_pretty(sys.used_memory()), make_pretty(sys.total_memory()),
-        lcolor, tcolor, swap,
-        lcolor,
-        lcolor,
-        lcolor,
-        lcolor,
-        lcolor
-    );
+    let mut logo: Vec<String> = Vec::new();
 
-    println!("{}", all);
+    match fs::read_to_string(
+        dirs::home_dir().unwrap().to_string_lossy().to_string() + "/.config/rfetch.txt",
+    ) {
+        Ok(v) => v
+            .replace("{", "{{")
+            .replace("}", "}}")
+            .replace("\\", "\\\\")
+            .split("\n")
+            .for_each(|x| logo.push(x.to_string())),
+        Err(e) => {
+            //todo
+            println!("{e}");
+            std::process::exit(0);
+        }
+    };
+
+    let info = vec![
+        format!("host:\t{}", sys.host_name().unwrap()),
+        format!("distro:\t{}", sys.name().unwrap()),
+        format!("kernel:\t{}", sys.kernel_version().unwrap()),
+        uptime,
+        format!("shell:\t{}", get_shell()),
+        format!("wm:\t{}", actual_wm),
+        format!("cpu:\t{}", cpu),
+        format!("temp:\t{}", sys.components()[0].temperature()),
+        format!(
+            "ram:\t{}MiB / {}MiB",
+            make_pretty(sys.used_memory()),
+            make_pretty(sys.total_memory())
+        ),
+        swap,
+    ];
+
+    let mut index = 0;
+    for i in logo {
+        if index + 1 > info.len() {
+            println!("{}{}\t\t", lcolor, i);
+            continue;
+        }
+        println!("{}{}\t\t{}{}", lcolor, i, tcolor, info[index]);
+        index += 1;
+    }
 }
 
 fn main() {
@@ -92,8 +97,8 @@ fn main() {
     //
     // else print it out in hours
     let mut uptime: String = String::new();
-    if sys.uptime() < 60 {
-        uptime = format!("Uptime:\t{} min", sys.uptime() / 60);
+    if sys.uptime() < 3600 {
+        uptime = format!("uptime:\t{} min", sys.uptime() / 60);
     } else {
         uptime = format!("Uptime:\t{} hrs", sys.uptime() / 3600);
     }
@@ -106,7 +111,10 @@ fn main() {
 
     let win_command = str::from_utf8(&win_command.stdout).unwrap();
 
-    let win_id = &win_command[(win_command.find("_NET_SUPPORTING_WM_CHECK: window id #").unwrap() + 38)..(win_command.find("_XROOTPMAP_ID:").unwrap() - 1)];
+    let win_id = &win_command[(win_command
+        .find("_NET_SUPPORTING_WM_CHECK: window id #")
+        .unwrap()
+        + 38)..(win_command.find("_XROOTPMAP_ID:").unwrap() - 1)];
 
     let wm = Command::new("xprop")
         .args(["-id", &win_id])
@@ -137,7 +145,8 @@ fn main() {
         }
     }
 
-    // if the name is long, simply cut off the end, this may not look pretty/work well for your cpu
+    // if the name is long, simply cut off the end, this may not look pretty/work well for
+    // your cpu
     // but it can easily be tweaked
     if cpu_name.len() > 17 {
         cpu_name = cpu_name[..16].to_string();
@@ -154,7 +163,7 @@ fn main() {
     // if there is no swap then skip, otherwise print
     if sys.total_swap() > 0 {
         swap = format!(
-            "Swap:\t{:?}MiB / {:?}MiB",
+            "swap:\t{:?}MiB / {:?}MiB",
             make_pretty(sys.used_swap()),
             make_pretty(sys.total_swap())
         );

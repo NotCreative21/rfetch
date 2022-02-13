@@ -8,3 +8,4 @@ authors = ["NotCreative21"]
 
 [dependencies]
 sysinfo = "0.21.2"
+dirs = "4.0"

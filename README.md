@@ -14,7 +14,7 @@ Due to it's simple nature, this is in turn very hackable, it pulls most of the i
 In reality, rust is not a good language for something like this. However, it's my favorite to write in.
 
 
-Only tested on Linux and likely works on \*nix systems, the gentoo logo is hardcoded because that's the distribution I use and I don't know how to properly display ascii art next to text.
+Only tested on Linux and likely works on \*nix systems, a file called rfetch.txt must be placed in the `~/.config/` folder for an ascii logo 
 
 #### installation
 
@@ -32,7 +32,6 @@ $ sudo cp target/release/rfetch /usr/bin/
 #### future improvements
 * alternate way to detect WM/DE
 * color display
-* proper asii logo integration instead of a hardcoded string
 * terminal detection
 * gpu detection
 * gtk theme/icon theme
