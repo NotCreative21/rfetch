@@ -5,6 +5,9 @@ use std::{
 };
 use sysinfo::{ComponentExt, ProcessorExt, System, SystemExt};
 
+const LOGO_COLOR: &'static str = "\x1b[0;34m";
+const TEXT_COLOR: &'static str = "\x1b[0;32m";
+
 /*
  * returns the current shell used by the user by parsing /etc/passwd
  */
@@ -36,14 +39,7 @@ fn make_pretty(i: u64) -> u32 {
  * printing octal correctly
  */
 fn print_logo(sys: System, uptime: String, actual_wm: &str, cpu: String, swap: String) {
-    // logo color using bash color codes
-    let lcolor = "\x1b[0;36m ".to_string();
-
-    // text color, also using bash color codes
-    let tcolor = "\x1b[0;32m".to_string();
-
     let mut logo: Vec<String> = Vec::new();
-
     match fs::read_to_string(
         dirs::home_dir().unwrap().to_string_lossy().to_string() + "/.config/rfetch.txt",
     ) {
@@ -68,7 +64,7 @@ fn print_logo(sys: System, uptime: String, actual_wm: &str, cpu: String, swap: S
         format!("shell:\t{}", get_shell()),
         format!("wm:\t{}", actual_wm),
         format!("cpu:\t{}", cpu),
-        format!("temp:\t{}", sys.components()[0].temperature()),
+        format!("temp:\t{}°C", sys.components()[0].temperature()),
         format!(
             "ram:\t{}MiB / {}MiB",
             make_pretty(sys.used_memory()),
@@ -77,15 +73,19 @@ fn print_logo(sys: System, uptime: String, actual_wm: &str, cpu: String, swap: S
         swap,
     ];
 
+    let mut output = "".to_string();
     let mut index = 0;
     for i in logo {
         if index + 1 > info.len() {
-            println!("{}{}\t\t", lcolor, i);
+            //println!("{}{}\t\t", logo_color, i);
+            output.push_str(&format!("{LOGO_COLOR}{i}\t\t\n"));
             continue;
         }
-        println!("{}{}\t\t{}{}", lcolor, i, tcolor, info[index]);
+        //println!("{}{}\t\t{}{}", logo_color, i, text_color, info[index]);
+        output.push_str(&format!("{LOGO_COLOR}{i}\t\t{TEXT_COLOR}{}\n", info[index]));
         index += 1;
     }
+    println!("{output}");
 }
 
 fn main() {
@@ -96,12 +96,10 @@ fn main() {
     // if the uptime is less than an hour, display in minutes
     //
     // else print it out in hours
-    let mut uptime: String = String::new();
-    if sys.uptime() < 3600 {
-        uptime = format!("uptime:\t{} min", sys.uptime() / 60);
-    } else {
-        uptime = format!("Uptime:\t{} hrs", sys.uptime() / 3600);
-    }
+    let uptime = match sys.uptime() {
+        3600.. => format!("Uptime:\t{} hrs", sys.uptime() / 3600),
+        _ => format!("uptime:\t{} min", sys.uptime() / 60),
+    };
 
     // use xprop to find the wm
     let win_command = Command::new("xprop")
